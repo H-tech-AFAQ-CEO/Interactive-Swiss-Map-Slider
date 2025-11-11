@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swiss Cantons Explorer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      overflow-x: hidden;
+    }
+
+    .slider-container {
+      max-width: 1400px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+
+    .slider-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .slider-header h1 {
+      font-size: clamp(28px, 5vw, 48px);
+      color: #2c3e50;
+      margin-bottom: 12px;
+    }
+
+    .slider-header p {
+      font-size: clamp(14px, 2vw, 18px);
+      color: #7f8c8d;
+    }
+
+    .slider-wrapper {
+      position: relative;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+      padding: 40px 20px;
+    }
+
+    .slider-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      align-items: center;
+      min-height: 500px;
+    }
+
+    /* Map Section */
+    .map-section {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .map-container {
+      width: 100%;
+      max-width: 500px;
+      position: relative;
+    }
+
+    .map-container svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* Canton paths styling */
+    .canton {
+      fill: #e8e8e8;
+      stroke: #ffffff;
+      stroke-width: 1.5;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+    }
+
+    .canton:hover {
+      fill: #d0d0d0;
+    }
+
+    .canton.active {
+      fill: #dc143c;
+      stroke: #a00000;
+      stroke-width: 2;
+      filter: drop-shadow(0 4px 12px rgba(220, 20, 60, 0.4));
+    }
+
+    .canton.related {
+      fill: #ffb6c1;
+      stroke: #ffffff;
+    }
+
+    /* Info Section */
+    .info-section {
+      padding: 20px;
+      opacity: 0;
+      transform: translateX(20px);
+      animation: slideIn 0.6s ease forwards;
+    }
+
+    @keyframes slideIn {
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .canton-name {
+      font-size: clamp(24px, 4vw, 36px);
+      font-weight: 700;
+      color: #2c3e50;
+      margin-bottom: 8px;
+    }
+
+    .canton-subtitle {
+      font-size: clamp(14px, 2vw, 18px);
+      color: #7f8c8d;
+      margin-bottom: 24px;
+    }
+
+    .canton-facts {
+      list-style: none;
+      margin-bottom: 24px;
+    }
+
+    .canton-facts li {
+      padding: 12px 0;
+      border-bottom: 1px solid #ecf0f1;
+      display: flex;
+      justify-content: space-between;
+      font-size: clamp(14px, 1.8vw, 16px);
+    }
+
+    .canton-facts li:last-child {
+      border-bottom: none;
+    }
+
+    .fact-label {
+      font-weight: 600;
+      color: #34495e;
+    }
+
+    .fact-value {
+      color: #7f8c8d;
+    }
+
+    .canton-description {
+      font-size: clamp(14px, 1.8vw, 16px);
+      line-height: 1.6;
+      color: #555;
+      margin-top: 16px;
+    }
+
+    /* Navigation Controls */
+    .slider-nav {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      margin-top: 40px;
+      padding: 0 20px;
+    }
+
+    .nav-btn {
+      background: #dc143c;
+      color: white;
+      border: none;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(220, 20, 60, 0.2);
+    }
+
+    .nav-btn:hover:not(:disabled) {
+      background: #a00000;
+      transform: scale(1.1);
+    }
+
+    .nav-btn:disabled {
+      background: #bdc3c7;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .pagination {
+      display: flex;
+      gap: 8px;
+    }
+
+    .pagination-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #bdc3c7;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .pagination-dot.active {
+      background: #dc143c;
+      width: 32px;
+      border-radius: 6px;
+    }
+
+    .pagination-dot:hover {
+      background: #95a5a6;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 968px) {
+      .slider-content {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      .map-section {
+        order: 2;
+      }
+
+      .info-section {
+        order: 1;
+        padding: 10px;
+      }
+
+      .slider-wrapper {
+        padding: 30px 15px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .slider-container {
+        margin: 20px auto;
+        padding: 0 10px;
+      }
+
+      .slider-wrapper {
+        padding: 20px 10px;
+      }
+
+      .nav-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+      }
+
+      .pagination-dot {
+        width: 10px;
+        height: 10px;
+      }
+
+      .pagination-dot.active {
+        width: 24px;
+      }
+    }
+
+    /* Loading state */
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: #7f8c8d;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div class="slider-container">
+    <div class="slider-header">
+      <h1>Discover Switzerland</h1>
+      <p>Explore the cantons and regions of Switzerland</p>
+    </div>
+
+    <div class="slider-wrapper">
+      <div class="slider-content">
+        <!-- Map Section -->
+        <div class="map-section">
+          <div class="map-container">
+            <!-- Simplified Switzerland SVG Map -->
+            <svg viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg">
+              <!-- Zurich -->
+              <path id="ZH" class="canton" d="M 380 140 L 420 140 L 430 160 L 420 180 L 380 180 L 370 160 Z"/>
+              
+              <!-- Bern -->
+              <path id="BE" class="canton" d="M 250 180 L 320 180 L 330 200 L 320 240 L 280 250 L 240 240 L 230 200 Z"/>
+              
+              <!-- Lucerne -->
+              <path id="LU" class="canton" d="M 320 180 L 360 180 L 370 200 L 360 220 L 320 220 L 310 200 Z"/>
+              
+              <!-- Uri -->
+              <path id="UR" class="canton" d="M 360 220 L 380 220 L 390 240 L 380 260 L 360 260 L 350 240 Z"/>
+              
+              <!-- Schwyz -->
+              <path id="SZ" class="canton" d="M 380 180 L 410 190 L 410 210 L 390 220 L 370 210 L 370 190 Z"/>
+              
+              <!-- Geneva -->
+              <path id="GE" class="canton" d="M 150 280 L 180 280 L 190 300 L 180 320 L 150 320 L 140 300 Z"/>
+              
+              <!-- Vaud -->
+              <path id="VD" class="canton" d="M 180 240 L 240 240 L 250 260 L 240 300 L 190 300 L 180 280 L 180 260 Z"/>
+              
+              <!-- Valais -->
+              <path id="VS" class="canton" d="M 240 260 L 320 270 L 340 290 L 320 320 L 250 310 L 240 290 Z"/>
+              
+              <!-- Ticino -->
+              <path id="TI" class="canton" d="M 380 260 L 440 280 L 450 310 L 430 340 L 380 330 L 360 300 L 370 280 Z"/>
+              
+              <!-- Graubünden -->
+              <path id="GR" class="canton" d="M 420 180 L 500 200 L 520 240 L 500 280 L 450 280 L 430 260 L 420 240 L 420 200 Z"/>
+              
+              <!-- St. Gallen -->
+              <path id="SG" class="canton" d="M 430 140 L 480 150 L 490 170 L 480 190 L 430 180 L 420 160 Z"/>
+              
+              <!-- Aargau -->
+              <path id="AG" class="canton" d="M 330 160 L 370 160 L 380 180 L 370 200 L 330 200 L 320 180 Z"/>
+              
+              <!-- Thurgau -->
+              <path id="TG" class="canton" d="M 420 120 L 460 120 L 470 140 L 460 160 L 420 160 L 410 140 Z"/>
+              
+              <!-- Basel -->
+              <path id="BS-BL" class="canton" d="M 280 140 L 320 140 L 330 160 L 320 180 L 280 180 L 270 160 Z"/>
+              
+              <!-- Schaffhausen -->
+              <path id="SH" class="canton" d="M 380 100 L 420 100 L 430 120 L 420 140 L 380 140 L 370 120 Z"/>
+              
+              <!-- Fribourg -->
+              <path id="FR" class="canton" d="M 220 200 L 260 200 L 270 220 L 260 240 L 220 240 L 210 220 Z"/>
+              
+              <!-- Neuchâtel -->
+              <path id="NE" class="canton" d="M 200 180 L 240 180 L 250 200 L 240 220 L 200 220 L 190 200 Z"/>
+              
+              <!-- Jura -->
+              <path id="JU" class="canton" d="M 220 140 L 260 140 L 270 160 L 260 180 L 220 180 L 210 160 Z"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Info Section -->
+        <div class="info-section" id="info-section">
+          <div class="loading">Loading canton information...</div>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <div class="slider-nav">
+        <button class="nav-btn" id="prev-btn" aria-label="Previous canton">←</button>
+        <div class="pagination" id="pagination"></div>
+        <button class="nav-btn" id="next-btn" aria-label="Next canton">→</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Canton data structure - easily extensible
+    const cantonData = [
+      {
+        id: 'ZH',
+        name: 'Zürich',
+        subtitle: 'Economic Heart',
+        facts: [
+          { label: 'Population', value: '~1.5 million' },
+          { label: 'Area', value: '1,729 km²' },
+          { label: 'Capital', value: 'Zürich' },
+          { label: 'Languages', value: 'German' }
+        ],
+        description: 'Switzerland\'s most populous canton and economic powerhouse, home to global finance, technology, and world-class universities.',
+        related: ['AG', 'SG', 'TG']
+      },
+      {
+        id: 'BE',
+        name: 'Bern',
+        subtitle: 'Federal Capital Region',
+        facts: [
+          { label: 'Population', value: '~1 million' },
+          { label: 'Area', value: '5,959 km²' },
+          { label: 'Capital', value: 'Bern' },
+          { label: 'Languages', value: 'German, French' }
+        ],
+        description: 'Home to the Swiss capital and UNESCO World Heritage old town. The canton spans from the Jura mountains to the Bernese Alps.',
+        related: ['LU', 'FR', 'NE', 'VD']
+      },
+      {
+        id: 'GE',
+        name: 'Geneva',
+        subtitle: 'International Hub',
+        facts: [
+          { label: 'Population', value: '~504,000' },
+          { label: 'Area', value: '282 km²' },
+          { label: 'Capital', value: 'Geneva' },
+          { label: 'Languages', value: 'French' }
+        ],
+        description: 'Global center for diplomacy and international cooperation, hosting the UN and countless NGOs. A truly cosmopolitan canton.',
+        related: ['VD']
+      },
+      {
+        id: 'VD',
+        name: 'Vaud',
+        subtitle: 'Lake Geneva Region',
+        facts: [
+          { label: 'Population', value: '~814,000' },
+          { label: 'Area', value: '3,212 km²' },
+          { label: 'Capital', value: 'Lausanne' },
+          { label: 'Languages', value: 'French' }
+        ],
+        description: 'Spectacular landscapes from Lake Geneva to Alpine peaks, famous for terraced vineyards and the Olympic capital Lausanne.',
+        related: ['GE', 'FR', 'BE', 'VS']
+      },
+      {
+        id: 'VS',
+        name: 'Valais',
+        subtitle: 'Alpine Paradise',
+        facts: [
+          { label: 'Population', value: '~349,000' },
+          { label: 'Area', value: '5,224 km²' },
+          { label: 'Capital', value: 'Sion' },
+          { label: 'Languages', value: 'French, German' }
+        ],
+        description: 'Home to the Matterhorn and numerous 4,000-meter peaks. A paradise for skiers, hikers, and wine enthusiasts.',
+        related: ['BE', 'VD', 'TI', 'UR']
+      },
+      {
+        id: 'TI',
+        name: 'Ticino',
+        subtitle: 'Swiss Mediterranean',
+        facts: [
+          { label: 'Population', value: '~353,000' },
+          { label: 'Area', value: '2,812 km²' },
+          { label: 'Capital', value: 'Bellinzona' },
+          { label: 'Languages', value: 'Italian' }
+        ],
+        description: 'The Italian-speaking canton offers Mediterranean climate, stunning lakes, palm trees, and a unique blend of Swiss and Italian culture.',
+        related: ['GR', 'UR', 'VS']
+      },
+      {
+        id: 'GR',
+        name: 'Graubünden',
+        subtitle: 'Largest Canton',
+        facts: [
+          { label: 'Population', value: '~199,000' },
+          { label: 'Area', value: '7,105 km²' },
+          { label: 'Capital', value: 'Chur' },
+          { label: 'Languages', value: 'German, Romansh, Italian' }
+        ],
+        description: 'Switzerland\'s largest and most sparsely populated canton, home to St. Moritz, Davos, and three official languages.',
+        related: ['TI', 'UR', 'SG', 'SZ']
+      },
+      {
+        id: 'LU',
+        name: 'Lucerne',
+        subtitle: 'Central Switzerland',
+        facts: [
+          { label: 'Population', value: '~416,000' },
+          { label: 'Area', value: '1,493 km²' },
+          { label: 'Capital', value: 'Lucerne' },
+          { label: 'Languages', value: 'German' }
+        ],
+        description: 'Gateway to Central Switzerland with its iconic Chapel Bridge, stunning lake, and mountain panoramas including Mount Pilatus.',
+        related: ['BE', 'AG', 'SZ', 'UR']
+      }
+    ];
+
+    // Slider state
+    let currentIndex = 0;
+    const totalSlides = cantonData.length;
+
+    // DOM elements
+    const infoSection = document.getElementById('info-section');
+    const pagination = document.getElementById('pagination');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const cantons = document.querySelectorAll('.canton');
+
+    // Initialize slider
+    function init() {
+      createPagination();
+      updateSlide(0);
+      attachEventListeners();
+    }
+
+    // Create pagination dots
+    function createPagination() {
+      pagination.innerHTML = '';
+      for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'pagination-dot';
+        dot.setAttribute('aria-label', `Go to canton ${i + 1}`);
+        dot.addEventListener('click', () => goToSlide(i));
+        pagination.appendChild(dot);
+      }
+    }
+
+    // Update slide content and map
+    function updateSlide(index) {
+      currentIndex = index;
+      const canton = cantonData[index];
+
+      // Update info section with animation
+      infoSection.style.opacity = '0';
+      infoSection.style.transform = 'translateX(20px)';
+
+      setTimeout(() => {
+        infoSection.innerHTML = `
+          <h2 class="canton-name">${canton.name}</h2>
+          <p class="canton-subtitle">${canton.subtitle}</p>
+          <ul class="canton-facts">
+            ${canton.facts.map(fact => `
+              <li>
+                <span class="fact-label">${fact.label}</span>
+                <span class="fact-value">${fact.value}</span>
+              </li>
+            `).join('')}
+          </ul>
+          <p class="canton-description">${canton.description}</p>
+        `;
+
+        // Reset animation
+        infoSection.style.animation = 'none';
+        setTimeout(() => {
+          infoSection.style.animation = '';
+        }, 10);
+      }, 300);
+
+      // Update map highlighting
+      updateMap(canton);
+
+      // Update pagination
+      updatePagination();
+
+      // Update navigation buttons
+      prevBtn.disabled = currentIndex === 0;
+      nextBtn.disabled = currentIndex === totalSlides - 1;
+    }
+
+    // Update map highlighting
+    function updateMap(canton) {
+      // Reset all cantons
+      cantons.forEach(c => {
+        c.classList.remove('active', 'related');
+      });
+
+      // Highlight active canton
+      const activeCanton = document.getElementById(canton.id);
+      if (activeCanton) {
+        activeCanton.classList.add('active');
+      }
+
+      // Highlight related cantons
+      if (canton.related) {
+        canton.related.forEach(relatedId => {
+          const relatedCanton = document.getElementById(relatedId);
+          if (relatedCanton) {
+            relatedCanton.classList.add('related');
+          }
+        });
+      }
+    }
+
+    // Update pagination dots
+    function updatePagination() {
+      const dots = pagination.querySelectorAll('.pagination-dot');
+      dots.forEach((dot, index) => {
+        dot.classList.toggle('active', index === currentIndex);
+      });
+    }
+
+    // Navigation functions
+    function goToSlide(index) {
+      if (index >= 0 && index < totalSlides) {
+        updateSlide(index);
+      }
+    }
+
+    function nextSlide() {
+      if (currentIndex < totalSlides - 1) {
+        goToSlide(currentIndex + 1);
+      }
+    }
+
+    function prevSlide() {
+      if (currentIndex > 0) {
+        goToSlide(currentIndex - 1);
+      }
+    }
+
+    // Attach event listeners
+    function attachEventListeners() {
+      prevBtn.addEventListener('click', prevSlide);
+      nextBtn.addEventListener('click', nextSlide);
+
+      // Click on canton to navigate to it
+      cantons.forEach(canton => {
+        canton.addEventListener('click', () => {
+          const cantonId = canton.id;
+          const index = cantonData.findIndex(c => c.id === cantonId);
+          if (index !== -1) {
+            goToSlide(index);
+          }
+        });
+      });
+
+      // Keyboard navigation
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') prevSlide();
+        if (e.key === 'ArrowRight') nextSlide();
+      });
+
+      // Touch swipe support for mobile
+      let touchStartX = 0;
+      let touchEndX = 0;
+
+      infoSection.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+      }, { passive: true });
+
+      infoSection.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+      }, { passive: true });
+
+      function handleSwipe() {
+        const swipeThreshold = 50;
+        if (touchEndX < touchStartX - swipeThreshold) {
+          nextSlide();
+        }
+        if (touchEndX > touchStartX + swipeThreshold) {
+          prevSlide();
+        }
+      }
+    }
+
+    // Initialize on page load
+    init();
+  </script>
+</body>
+</html>
